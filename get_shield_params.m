@@ -32,7 +32,7 @@ switch expt_name
         % Optical params from Lorenzo's instrument parameter spreadsheet
         fb_h = 1.086;
         fov = 29.6;
-        win_d = 0.34;
+        win_d = 0.34*2;
         dk_off = [0., 0.9271];
         el_off = [0., 2.3];
         az_off = [0., 0.];
@@ -55,10 +55,14 @@ switch expt_name
         min_el = 54;
         n_rx = 1;
         gs_dim = [5.3 3];
+        g3 = 0.5;
+        g1 = 0.49;
+        g2 = 0.01;
+        gd = 0;
         
     case "BICEP1"
         % mount, fb, and gs dimensions pulled from paper vertex drawings...
-        fb_h = 1.2913;
+        fb_h = 0.9689;
         fov = 9.68*2;
         win_d = 0.264;
         dk_off = [0., .9772];
@@ -66,7 +70,11 @@ switch expt_name
         az_off = [0., 0.];
         min_el = 50;
         n_rx = 1;
-        gs_dim = [3.9878 2.0225];
+        gs_dim = [3.9878 2.1749];
+        g3 = 0.5;
+        g1 = 0.49;
+        g2 = 0.01;
+        gd = 0;
         
     case "S4SAT3SHOT"
         % Update Params

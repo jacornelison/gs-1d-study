@@ -1,4 +1,4 @@
-function [gs_params, varargout] = s4_gs_study(shield_params,PLOT,anim,singlestat,threeshield)
+function [gs_params, varargout] = s4_gs_study(shield_params,varargin)%PLOT,anim,singlestat,threeshield,varargin)
 %function gs_params = s4_gs_study(fb_h,fov,win_d,el_off,az_off,min_el,nRx)
 %
 % fb_h - forebaffle height in meters
@@ -18,73 +18,51 @@ function [gs_params, varargout] = s4_gs_study(shield_params,PLOT,anim,singlestat
 
 %%
 % Initialize variables.
+% 3 GS panels. Determine panel locations.
+g3 = 0.25;
+g1 = (1-g3)/2;
+g2 = g1;
+gd = 25;
+
+
 
 % Extract variables from the input struct.
 if isempty(shield_params)
     shield_params = get_shield_params('BA');
 elseif isstring(shield_params)
+    expt = shield_params;
     shield_params = get_shield_params(shield_params);
 end
 
 vars = fieldnames(shield_params);
 for i = 1:length(vars)
-eval([vars{i} '= shield_params.(''' vars{i} ''');'])
+eval([vars{i} '= shield_params.(''' vars{i} ''');']);
 end
 
+opts = {'PLOT','anim','singlestat','threeshield','smargin',...
+    'axis_window','INTEXT','OUTTEXT','LEGEND','TITLE'};
+defs = {false, false, false, false, 2,...
+    10, false, false, true,true};
 
-if ~exist('fb_h','var') | isempty(fb_h)
-    fb_h = 1;
-end
-if ~exist('fov','var') | isempty(fov)
-    fov = 28;
-end
-if ~exist('win_d','var') | isempty(win_d)
-    win_d = .72; % New BA window diam.
-end
-
-
-if ~exist('el_off','var') | isempty(dk_off)
-    dk_off = [0,0];
-elseif size(dk_off,2) < 2
-    dk_off = [0,dk_off];
-end
-
-if ~exist('az_off','var') | isempty(el_off)
-    el_off = [0, 0];
-elseif size(el_off,2) < 2
-    el_off = [0., el_off];
+for i = 1:length(varargin)
+    for j = 1:length(opts)
+        %keyboard()
+        if isstring(varargin{i}) & strcmp(varargin{i},opts{j})
+            if isstring(varargin{i+1})
+                s = ([varargin{i} '=' varargin{i+1} ';']);
+            else
+                s = ([varargin{i} '=' num2str(varargin{i+1}) ';']);
+            end
+            eval(char(s));
+        end
+    end
 end
 
-if ~exist('el_off','var') | isempty(az_off)
-    az_off = [0,0];
-elseif size(az_off,2) < 2
-    az_off = [0,az_off];
+for i = 1:length(opts)
+    if ~exist(opts{i},'var')
+        eval([opts{i} '=' num2str(defs{i}) ';']);
+    end
 end
-
-if ~exist('min_el','var') | isempty(min_el)
-    min_el = 45;
-end
-if ~exist('n_rx','var') | isempty(n_rx)
-    n_rx = 1;
-end
-if ~exist('PLOT','var') | isempty(PLOT)
-    PLOT = 0;
-end
-if ~exist('anim','var') | isempty(anim)
-    anim = 0;
-end
-if ~exist('singlestat','var') | isempty(singlestat)
-    singlestat=0;
-end
-
-if ~exist('threeshield','var') | isempty(threeshield)
-    threeshield=0;
-end
-
-if ~exist('smargin','var') | isempty(smargin)
-    smargin = 2;
-end
-
 
 if singlestat
     switch n_rx
@@ -356,12 +334,6 @@ for i = 1:2
                 P = gs_dim;
             end
             
-            % 3 GS panels. Determine panel locations.
-            g3 = 0.25;
-            g1 = (1-g3)/2;
-            g2 = g1;
-            gd = 25;
-            
             quiver(0,0,P(1)*g1,0,0,'Color','k','ShowArrowHead','off','LineWidth',1)
             quiver(P(1)*g1,0,P(1)*g2,P(1)*g2*tand(gd),0,'Color','k','ShowArrowHead','off','LineWidth',1)
             quiver(P(1)*(g1+g2),P(1)*g2*tand(gd),P(1)*g3,(P(2)-P(1)*g2*tand(gd)),0,'Color','k','ShowArrowHead','off','LineWidth',1)
@@ -381,22 +353,28 @@ for i = 1:2
     end
 end
 
-if PLOT
-    axis equal
-    axis_window = 15;%ceil(abs(P(1))/100);
-    xlim([-1 1]*axis_window)
-    ylim([-.20 1.80]*axis_window)
-    txt_x = .9;
-    txt_y = .85;
+axis equal
+xlim([-1 1]*axis_window)
+ylim([-.20 1.80]*axis_window/(2.5-(INTEXT | OUTTEXT)))
+txt_x = .9;
+txt_y = .85;
+
+if INTEXT
     txt_str = {sprintf('Inputs:'),...
         sprintf('Forebaffle Height (m): %2.1f',fb_h),...
         sprintf('Window Diameter (cm): %2.1f',win_d*100),...
         sprintf('FOV (deg): %2.1f',fov),...
-        sprintf('Elevation Offset (x,y in m): %2.1f, %2.1f',dk_off(1),dk_off(2)),...
         sprintf('Min Obs El (deg): %2.1f',min_el),...
-        sprintf('Number of RX''s: %2.0f',n_rx),...
-        sprintf('Diffraction Safety Margin (deg): %2.1f',smargin),...
-        sprintf(''),...
+        sprintf('Diffraction Safety Margin (deg): %2.1f',smargin)};
+        %sprintf('Elevation Offset (x,y in m): %2.1f, %2.1f',dk_off(1),dk_off(2)),...
+        %sprintf('Number of RX''s: %2.0f',n_rx),...
+        
+else
+    txt_str = {''};
+end
+if OUTTEXT
+    
+    t = {sprintf(''),...
         sprintf('Outputs:'),...
         sprintf('El @ FB peak (deg): %2.1f',90-el_peak),...
         sprintf('Forebaffle Radius (m): %2.1f',fb_r),...
@@ -404,22 +382,36 @@ if PLOT
         sprintf('Min GS Ht. (m): %2.1f',P(2)),...
         sprintf('Excl. Ray Angle (deg): %2.1f',excl_ang)        
         };
+    txt_str = {txt_str{:} t{:}};
+end
+
+
+
+if PLOT
     text(-axis_window*txt_x,axis_window*txt_y,txt_str)
-    
+end 
+if LEGEND
     legend('FOV ray','Incl. ray','Excl. Ray','Forebaffle','GS min dist.','Location','northwest')
-    ylabel('Height (m)')
-    xlabel('Distance (m)')
-    rxtitle = {'Single','Double','Triple','Quad','Quint'};
-    tname = [rxtitle{n_rx} ' RX'];
-    if singlestat == 0
-        tname = [tname ', separate cryostat'];
+
+    
+end
+ylabel('Height (m)')
+xlabel('Distance (m)')
+
+if TITLE
+    
+    if exist('expt','var')
+        tname = expt;
     else
-       tname = [tname ', shared cryostat'];
+        rxtitle = {'Single','Double','Triple','Quad','Quint'};
+        tname = [rxtitle{n_rx} ' RX'];
     end
-    if threeshield == 0
-        tname = [tname ', double shielded'];
-    else
-       tname = [tname ', triple shielded'];
+    
+    if singlestat ~= 0
+        tname = [tname ', shared cryostat'];
+    end
+    if threeshield ~= 0
+       tname = [tname ', with scoop'];
     end
     title(tname)
     grid on
