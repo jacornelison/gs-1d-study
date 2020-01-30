@@ -29,7 +29,7 @@ gd = 25;
 % Extract variables from the input struct.
 if isempty(shield_params)
     shield_params = get_shield_params('BA');
-elseif isstring(shield_params)
+elseif ischar(shield_params)
     expt = shield_params;
     shield_params = get_shield_params(shield_params);
 end
@@ -47,7 +47,7 @@ defs = {false, false, false, false, 2,...
 for i = 1:length(varargin)
     for j = 1:length(opts)
         %keyboard()
-        if isstring(varargin{i}) & strcmp(varargin{i},opts{j})
+        if ischar(varargin{i}) & strcmp(varargin{i},opts{j})
             if isstring(varargin{i+1})
                 s = ([varargin{i} '=' varargin{i+1} ';']);
             else
@@ -226,6 +226,7 @@ for i = 1:2
             % Excl. ray angle
             excl_ang = atand(fb_h/(fb_r+win_d/2));
         else
+            
             excl = -(fb_l)+pos+fb_h*pnt-(pnt2*win_d/2+pos);
             excl2 = (fb_l)+pos+fb_h*pnt-(-pnt2*win_d/2+pos);
             % Find slope / intercept of ray
