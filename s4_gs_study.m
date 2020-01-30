@@ -48,7 +48,7 @@ for i = 1:length(varargin)
     for j = 1:length(opts)
         %keyboard()
         if ischar(varargin{i}) & strcmp(varargin{i},opts{j})
-            if isstring(varargin{i+1})
+            if ischar(varargin{i+1})
                 s = ([varargin{i} '=' varargin{i+1} ';']);
             else
                 s = ([varargin{i} '=' num2str(varargin{i+1}) ';']);
