@@ -1,20 +1,24 @@
-function [gs_params, varargout] = s4_gs_study(shield_params,varargin)%PLOT,anim,singlestat,threeshield,varargin)
-%function gs_params = s4_gs_study(fb_h,fov,win_d,el_off,az_off,min_el,nRx)
+function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
+%function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 %
 % fb_h - forebaffle height in meters
 % fov - field of view in degrees
 % win_d - window diameter in meters
 % el_off - elevation offset in meters. Either a vector or scalar (assumes
-%       y-axis if scalar
+%       y-axis if scalar)
 % az_off - Azimuth offset in meters. Scalar
 % min_el - Minimum observing elevation in degrees.
 % n_rx - number of receivers.
 % PLOT - turning plotting on (1) or off (0). Off by default.
 % anim - outputs an invisible figure to varargout for gif-making.
-% singlestat - If 1, will pack rx's together under a single forebaffle. 0
-%       by default.
-% threeshield - If 1, uses bottom FOV ray as exclusion ray to simulate
-%       3-shield configuration. Default 0.
+% singlestat - If true, will pack rx's together under a single forebaffle. 
+%              False by default      
+% threeshield - If true, uses bottom FOV ray as exclusion ray to simulate
+%       3-shield configuration. Default false.
+% spacing - additional window-to-window spacing (m) for singlestat option
+%           (only for 3-rx for now)
+% fixwindist - If value given, don't close-pack rxs and instead fix
+%              the enclosed radius
 
 %%
 % Initialize variables.
@@ -24,8 +28,6 @@ g1 = (1-g3)/2;
 g2 = g1;
 gd = 25;
 
-
-
 % Extract variables from the input struct.
 if isempty(shield_params)
     shield_params = get_shield_params('BA');
@@ -33,16 +35,19 @@ elseif ischar(shield_params)
     expt = shield_params;
     shield_params = get_shield_params(shield_params);
 end
+% Otherwise, struct should already contain requisite parameters
 
 vars = fieldnames(shield_params);
 for i = 1:length(vars)
-eval([vars{i} '= shield_params.(''' vars{i} ''');']);
+    eval([vars{i} '= shield_params.(''' vars{i} ''');']);
 end
 
 opts = {'PLOT','anim','singlestat','threeshield','smargin',...
-    'axis_window','INTEXT','OUTTEXT','LEGEND','TITLE'};
+    'axis_window','INTEXT','OUTTEXT','LEGEND','TITLE',...
+    'spacing','fixwindist'};
 defs = {false, false, false, false, 2,...
-    10, false, false, true,true};
+    10, false, false, true,true,...
+    0, false};
 
 for i = 1:length(varargin)
     for j = 1:length(opts)
@@ -70,7 +75,11 @@ if singlestat
         case 2
             win_d = 2*win_d;
         case 3
-            win_d = (1+2/sqrt(3))*win_d;
+            %win_d = (1+2/sqrt(3))*win_d; 
+	    % Take spacing into account
+	    win_r = win_d / 2.0;
+	    R = win_r + (win_r + (spacing/2))*(2*sqrt(3)/3);
+	    win_d = 2*R;
         case 4
             win_d = (1+sqrt(2))*win_d;
         case 5
@@ -127,7 +136,11 @@ for i = 1:2
             altpos = altpos + [1 0]*fb_r;
         end
     elseif n_rx == 3
-        encl_r = fb_r*(1+2/sqrt(3))-fb_r; % 3 Circle Packing radius
+        if fixwindist
+	    encl_r = fixwindist;
+	else
+            encl_r = fb_r*(1+2/sqrt(3))-fb_r; % 3 Circle Packing radius
+	end
         if i ==1
             altpos = altpos - [1 0]*encl_r/2;
             pos = pos + [1 0]*encl_r;
@@ -308,7 +321,7 @@ for i = 1:2
             fill([P(1) 100 100],[P(2) m2*100+b2 m1*100+b1],[0 0.8 0]+0.2,'EdgeColor','m')
             
             % Inclusion Ray Vecs
-            plot([-1000,1000],fb_point(2)+[-1000,1000]*tand(2),'b')
+            plot([-1000,1000],fb_point(2)+[-1000,1000]*tand(smargin),'b')
             
 
             % Min GS tip location
@@ -354,6 +367,7 @@ for i = 1:2
     end
 end
 
+if PLOT
 axis equal
 xlim([-1 1]*axis_window)
 ylim([-.20 1.80]*axis_window/(2.5-(INTEXT | OUTTEXT)))
@@ -392,7 +406,7 @@ if PLOT
     text(-axis_window*txt_x,axis_window*txt_y,txt_str)
 end 
 if LEGEND
-    legend('FOV ray','Incl. ray','Excl. Ray','Forebaffle','GS min dist.','Location','northwest')
+    legend('FOV ray','Incl. ray','Excl. Ray','Forebaffle','GS min dist.','Location','southwest')
 
     
 end
@@ -420,6 +434,7 @@ if TITLE
     if anim
         varargout{1} = fig;
     end
+end
 end
 
 function [pntp] = rotate_2d(pnt,th)
