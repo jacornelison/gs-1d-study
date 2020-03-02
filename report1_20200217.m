@@ -98,12 +98,19 @@ plot(fb_h1, gs_h1b,'--r','LineWidth',2);
 %plot(fb_h1, gs_h1b,'--m','LineWIdth',2);
 plot(fb_h3, gs_r3,'-b','LineWidth',2);
 plot(fb_h3, gs_h3,'--b','LineWidth',2);
+% Mark points of comparison
+% (1.75, 5.93) (1.75, 12.38)
+% (3.5, 7.64) (3.5, 16.77)
+plot([1.75],[5.93],'rx','LineWidth',2,'MarkerSize',10)
+plot([1.75],[12.38],'rx','LineWidth',2,'MarkerSize',10)
+plot([3.5],[7.64],'bx','LineWidth',2,'MarkerSize',10)
+plot([3.5],[16.77],'bx','LineWidth',2,'MarkerSize',10)
 xlim([0.9, 5.0])
 ylim([0, 30]);
 xlabel('Forebaffle Height [m]')
 ylabel('Ground Screen Size [m]')
 grid on;
-legend('1-shooter GS Radius','1-shooter GS Height', ...
-      '3-shooter GS Radius','3-shooter GS height');
+legend('Extended GS Radius','Extended GS Height', ...
+      'Close-packed GS Radius','Close-packed GS height');
 
 print(2,[figdir 'comparison'], '-dpng')
