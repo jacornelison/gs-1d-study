@@ -1,26 +1,64 @@
 function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
-%function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
+% function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
+% This function calculates the groundhield dimensions a small aperture
+% telescope (SAT) for a wide range of input parameters.
 %
-% fb_h - forebaffle height in meters
-% fov - field of view in degrees
-% win_d - window diameter in meters
-% el_off - elevation offset in meters. Either a vector or scalar (assumes
-%       y-axis if scalar)
-% az_off - Azimuth offset in meters. Scalar
-% min_el - Minimum observing elevation in degrees.
-% n_rx - number of receivers.
-% PLOT - turning plotting on (1) or off (0). Off by default.
-% anim - outputs an invisible figure to varargout for gif-making.
-% singlestat - If true, will pack rx's together under a single forebaffle. 
-%              False by default      
-% threeshield - If true, uses bottom FOV ray as exclusion ray to simulate
-%       3-shield configuration. Default false.
-% spacing - additional window-to-window spacing (m) for singlestat option
-%           (only for 3-rx for now)
-% fixwindist - If value given, don't close-pack rxs and instead fix
-%              the enclosed radius
+% [Input]
+%   shield_params:  Struct containing experimental parameters. All float types.
+%       .fb_h       Forebaffle height in meters
+%       .fov        Field of view in degrees
+%       .win_d      window diameter in meters
+%       .dk_off     Deck offset in meters. Vector: [x,y]
+%       .el_off     Elevation offset in meters. Vector: [x,y]
+%       .az_off     Azimuth offset in meters. Vector: [x,y]
+%       .min_el     Minimum observing elevation in degrees.
+%       .n_rx       Number of receivers.
+%       [.gs_dim]   Forces groundshield dimensions. Useful for comparing to
+%                   pre-existing experiments. Optional.
+%
+%   shield_params:  Optionally, input a string corresponding to an
+%                   experiment in the function get_shield_params to
+%                   automatically retrieve parameters. Useful for 
+%                   experiments with known input parameters.
+%                   Example: s4_gs_study('BICEP2')
+%
+%   varargin:       {Input type} Miscellaneous arguments the changes behavior
+%       PLOT        {Bool} Turning plotting on (1) or off (0). Off by default.
+%       anim        {Bool} Outputs an invisible figure to varargout for gif-making.
+%       singlestat  {Bool} If true, will pack rx's together under a single forebaffle. 
+%                   False by default.      
+%       threeshield {Float/Int} Inserts a tertiary shield (called a scoop)
+%                   with the input length in meters. Exclusion ray will be 
+%                   defined by the length of the forebaffle + length of 
+%                   the scoop. Default 0. 
+%       spacing     {Float/Int} Additional window-to-window spacing (m) for
+%                   singlestat option (only for 3-rx for now)
+%       fixwindist  If value given, don't close-pack rxs and instead fix
+%                   the enclosed radius
+%
+% [Output]
+%   gs_params       {Units} Struct containing derived groundshield data.
+%       .excl_ang   {degrees} Exclusion angle defined by the forebaffle or
+%                   forebaffle + scoop heights.
+%       .el_peak    {degrees} Elevation at which the forebaffles, in their
+%                   highest configuration, are at maximum height.
+%       .fb_h       {meters} Input forebaffle height. Do we need this?
+%       .fb_r       {meters} Forebaffle radius required for input
+%                   forebaffle height to graze the instrument FOV.
+%       .gs_dim     {meters} Minimum [x,y] groundshield dimensions that satisfy all criterion. 
+%
+%   varargout       When 'anim' is toggled, this will output the figure
+%                   for gif-making.
+%
+% [Examples]
+%   gsp = s4_gs_study(shield_params);
+%   gsp = s4_gs_study('keck');
+%   gsp = s4_gs_study('BA','PLOT',true,'LEGEND',false,'INTEXT',true,'threeshield',2);
+%   [gsp, fig] = s4_gs_study('BA','anim',true);
+%
+%
+% function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 
-%%
 % Initialize variables.
 % 3 GS panels. Determine panel locations.
 g3 = 0.25;
@@ -226,15 +264,17 @@ for i = 1:2
         
     else
         % Make exclusion ray
-        % If we're including a scoop, the exclusion ray becomes the
-        % bottom-most FOV ray.
+        % If we're including a tertiary shield (or scoop), 
+        % the new exclusion ray is defined by the ray that is traced
+        % from the top-most part of the bottom-most window
+        % to the tip of the scoop.
         if threeshield
-            excl = fov1;
-            excl2 = fov2;
+            excl = -(fb_l)+pos+(fb_h+threeshield)*pnt-(pnt2*win_d/2+pos);
+            excl2 = (fb_l)+pos+(fb_h+threeshield)*pnt-(-pnt2*win_d/2+pos);
             
             % Find slope / intercept of ray
             m1 = excl2(2)/excl2(1);
-            b1 = (pnt2(2)*win_d/2+pos(2))-m1*(pnt2(1)*win_d/2+pos(1));
+            b1 = (-pnt2(2)*win_d/2+pos(2))-m1*(-pnt2(1)*win_d/2+pos(1));
             
             % Excl. ray angle
             excl_ang = atand(fb_h/(fb_r+win_d/2));
@@ -307,14 +347,19 @@ for i = 1:2
         
         if i == 1
             % Exclusion Ray Vecs
-            if threeshield
+            if 0%threeshield
                 quiver(pos(1)-winv(1),pos(2)-winv(2),excl(1)*1000,excl(2)*1000,0,'m','ShowArrowHead','off')
                 quiver((pos(1)+winv(1)),(pos(2)+winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
             else
                 quiver(pos(1)+winv(1),pos(2)+winv(2),excl(1)*1000,excl(2)*1000,0,'m','ShowArrowHead','off')
                 quiver((pos(1)-winv(1)),(pos(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
             end
-            
+           
+            if threeshield
+                st = 0.4;
+                %quiver((fb_l(1)*1.5+pos(1)),(fb_l(2)*1.5+pos(2)),excl2(1),excl2(2),0,'Color',[0 0 0.3]+0.4,'ShowArrowHead','off','LineWidth',2)
+                quiver((fb_l(1)+pos(1)),(fb_l(2)+pos(2)),(fb_h+threeshield)*pnt(1),(fb_h+threeshield)*pnt(2),0,'Color',[0 0 0.3]+0.4,'ShowArrowHead','off','LineWidth',2)
+            end
             
         else
             % Constraints Valid area
@@ -341,7 +386,7 @@ for i = 1:2
             quiver((-fb_l(1)+altpos(1)),(-fb_l(2)+altpos(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
         end
         
-        % Draw Ground Shield and maybe scoop
+        % Draw Ground Shield
         if i == 2% & 1
             % Force MAPO groundshield dimensions: 
             if exist('gs_dim','var')
@@ -356,10 +401,7 @@ for i = 1:2
             quiver(-P(1)*g1,0,-P(1)*g2,P(1)*g2*tand(gd),0,'Color','k','ShowArrowHead','off','LineWidth',1)
             quiver(-P(1)*(g1+g2),P(1)*g2*tand(gd),-P(1)*g3,(P(2)-P(1)*g2*tand(gd)),0,'Color','k','ShowArrowHead','off','LineWidth',1)
             
-        if threeshield == 1
-            st = 0.4;
-            quiver(P(1)*st,0,P(1)*(1-st),P(2),0,'Color',[0 0 0.3]+0.4,'ShowArrowHead','off','LineWidth',2)
-        end
+
         
         end
         
@@ -383,6 +425,9 @@ if INTEXT
         sprintf('Diffraction Safety Margin (deg): %2.1f',smargin)};
         %sprintf('Elevation Offset (x,y in m): %2.1f, %2.1f',dk_off(1),dk_off(2)),...
         %sprintf('Number of RX''s: %2.0f',n_rx),...
+    if threeshield
+        txt_str{end+1} = sprintf('Scoop Length (m): %2.1f',threeshield);
+    end
         
 else
     txt_str = {''};
