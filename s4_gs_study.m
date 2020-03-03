@@ -53,7 +53,7 @@ function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 % [Examples]
 %   gsp = s4_gs_study(shield_params);
 %   gsp = s4_gs_study('keck');
-%   gsp = s4_gs_study('BA','PLOT',true,'LEGEND',false,'INTEXT',true,'threeshield',2);
+%   gsp = s4_gs_study('BA','PLOT',true,'threeshield',2);
 %   [gsp, fig] = s4_gs_study('BA','anim',true);
 %
 %
