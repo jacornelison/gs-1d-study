@@ -30,7 +30,10 @@ function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 %       threeshield {Float/Int} Inserts a tertiary shield (called a scoop)
 %                   with the input length in meters. Exclusion ray will be 
 %                   defined by the length of the forebaffle + length of 
-%                   the scoop. Default 0. 
+%                   the scoop. Default 0.
+%       ts_radius   {bool} Determines whether to define the scoop by
+%                   'radius' mor 'height'. Default true for radius. select
+%                   false for height.
 %       spacing     {Float/Int} Additional window-to-window spacing (m) for
 %                   singlestat option (only for 3-rx for now)
 %       fixwindist  If value given, don't close-pack rxs and instead fix
@@ -82,10 +85,10 @@ end
 
 opts = {'PLOT','anim','singlestat','threeshield','smargin',...
     'axis_window','INTEXT','OUTTEXT','LEGEND','TITLE',...
-    'spacing','fixwindist'};
+    'spacing','fixwindist','ts_dim'};
 defs = {false, false, false, false, 2,...
     10, false, false, true,true,...
-    0, false};
+    0, false,true};
 
 for i = 1:length(varargin)
     for j = 1:length(opts)
@@ -260,7 +263,7 @@ for i = 1:2
         m2 = tand(smargin); % GS lip diffraction safety margin
         b2 = fb_point(2);
         px = (b2-b1)/(m1-m2);
-        P = [px m2*px+b2]; % <--- Min forebaffle dimensions
+        P = [px m2*px+b2]; % <--- Min groundshield dimensions
         
     else
         % Make exclusion ray
@@ -269,9 +272,18 @@ for i = 1:2
         % from the top-most part of the bottom-most window
         % to the tip of the scoop.
         if threeshield
-            excl = -(fb_l)+pos+(fb_h+threeshield)*pnt-(pnt2*win_d/2+pos);
-            excl2 = (fb_l)+pos+(fb_h+threeshield)*pnt-(-pnt2*win_d/2+pos);
+            % start by finding location at which the fov ray is fb_height+scoop above window.
+            if ts_dim
+                ts_r = threeshield;
+                ts_h = (ts_r-win_d/2)/tand(fov/2);
+            else
+                ts_h = fb_h+threeshield;
+                ts_r = (win_d/2 + (ts_h)*tand(fov/2));
+            end
             
+            ts_l = pnt2*ts_r;
+            excl = -(ts_l)+pos+(ts_h+threeshield)*pnt-(pnt2*win_d/2+pos);
+            excl2 = (ts_l)+pos+(ts_h)*pnt-(-pnt2*win_d/2+pos);
             % Find slope / intercept of ray
             m1 = excl2(2)/excl2(1);
             b1 = (-pnt2(2)*win_d/2+pos(2))-m1*(-pnt2(1)*win_d/2+pos(1));
@@ -296,12 +308,14 @@ for i = 1:2
     % Grab pertinent GS parameters for return variable
     if i == 1
         gs_params.excl_ang = excl_ang;
+        if threeshield
+            gs_params.ts_dim = ts_l+pos+(ts_h*pnt);
+        end
     else
         gs_params.el_peak = 90-el_peak;
         gs_params.fb_h = fb_h;
         gs_params.fb_r = fb_r;
         gs_params.gs_dim = P;
-        
     end
     
     % Plotting
@@ -335,7 +349,7 @@ for i = 1:2
         
         
         % fov Vec
-        if i ==2
+        if i == 1 %2
             quiver(winv(1)+pos(1),winv(2)+pos(2),fov2(1),fov2(2),0,'g','ShowArrowHead','off')
             quiver((-winv(1)+pos(1)),(-winv(2)+pos(2)),fov1(1),fov1(2),0,'g','ShowArrowHead','off')
         end
@@ -347,18 +361,13 @@ for i = 1:2
         
         if i == 1
             % Exclusion Ray Vecs
-            if 0%threeshield
-                quiver(pos(1)-winv(1),pos(2)-winv(2),excl(1)*1000,excl(2)*1000,0,'m','ShowArrowHead','off')
-                quiver((pos(1)+winv(1)),(pos(2)+winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
-            else
-                quiver(pos(1)+winv(1),pos(2)+winv(2),excl(1)*1000,excl(2)*1000,0,'m','ShowArrowHead','off')
-                quiver((pos(1)-winv(1)),(pos(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
-            end
-           
+            quiver(pos(1)+winv(1),pos(2)+winv(2),excl(1)*1000,excl(2)*1000,0,'m','ShowArrowHead','off')
+            quiver((pos(1)-winv(1)),(pos(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
+            
+            % Draw the scoop if we want to.
             if threeshield
-                st = 0.4;
-                %quiver((fb_l(1)*1.5+pos(1)),(fb_l(2)*1.5+pos(2)),excl2(1),excl2(2),0,'Color',[0 0 0.3]+0.4,'ShowArrowHead','off','LineWidth',2)
-                quiver((fb_l(1)+pos(1)),(fb_l(2)+pos(2)),(fb_h+threeshield)*pnt(1),(fb_h+threeshield)*pnt(2),0,'Color',[0 0 0.3]+0.4,'ShowArrowHead','off','LineWidth',2)
+                quiver((ts_l(1)+pos(1)),(ts_l(2)+pos(2)),ts_h*pnt(1),ts_h*pnt(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
+                quiver((pos(1)),(pos(2)),ts_l(1),ts_l(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
             end
             
         else
@@ -426,9 +435,13 @@ if INTEXT
         %sprintf('Elevation Offset (x,y in m): %2.1f, %2.1f',dk_off(1),dk_off(2)),...
         %sprintf('Number of RX''s: %2.0f',n_rx),...
     if threeshield
-        txt_str{end+1} = sprintf('Scoop Length (m): %2.1f',threeshield);
+        if ts_dim
+            ts_dim_txt = 'Radius';
+        else
+            ts_dim_txt = 'Height';
+        end
+        txt_str{end+1} = sprintf(['Tertiary Shield ', ts_dim_txt,' (m): %2.1f'],threeshield);
     end
-        
 else
     txt_str = {''};
 end
@@ -438,11 +451,16 @@ if OUTTEXT
         sprintf('Outputs:'),...
         sprintf('El @ FB peak (deg): %2.1f',90-el_peak),...
         sprintf('Forebaffle Radius (m): %2.1f',fb_r),...
-        sprintf('Min GS Dist. (m): %2.1f',P(1)),...
-        sprintf('Min GS Ht. (m): %2.1f',P(2)),...
-        sprintf('Excl. Ray Angle (deg): %2.1f',excl_ang)        
+        sprintf('Excl. Ray Angle (deg): %2.1f',excl_ang),...
+        sprintf('Min GS dim [x,y] (m): [ %2.1f, %2.1f ]',P(1),P(2))...
         };
+ 
     txt_str = {txt_str{:} t{:}};
+    
+    if threeshield
+        txt_str{end+1} = sprintf('Tertiary Shield Tip [x,y] (m): [ %2.1f, %2.1f ]',gs_params.ts_dim(1),gs_params.ts_dim(2));
+    end
+       
 end
 
 
