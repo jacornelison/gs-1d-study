@@ -123,9 +123,10 @@ if singlestat
         case 3
             %win_d = (1+2/sqrt(3))*win_d; 
 	    % Take spacing into account
+        
 	    win_r = win_d / 2.0;
 	    R = win_r + (win_r + (spacing/2))*(2*sqrt(3)/3);
-	    win_d = 2*R;
+	    win_d = 2*R
         case 4
             win_d = (1+sqrt(2))*win_d;
         case 5
@@ -149,6 +150,7 @@ end
 
 gs_params = [];
 
+
 % Do this twice. Once at min el for exclusion ray.
 % And again at peak forebaffle height to find inclusion ray.
 for i = 1:2
@@ -170,8 +172,10 @@ for i = 1:2
     dk_ax = org + dk_off;
     
     % start by finding location at which the fov ray is fb_height above window.
+    
     fb_r = (win_d/2 + fb_h*tand(fov/2));
     fb_l = pnt2*fb_r;
+    
     
     % Translate window from boresight if multiple rx's.
     if n_rx==2
@@ -223,7 +227,7 @@ for i = 1:2
     % Rotate in elevation.
     if i == 2
         fb_point = -fb_l+pos+fb_h*pnt;
-        el_peak = acosd(dot(fb_point,[0,1])/(norm(fb_point)));
+        el_peak = acosd(dot(fb_point,[0,1])/(norm(fb_point)))
         el_ang = el_peak;
     else
         el_ang = 90-min_el;
