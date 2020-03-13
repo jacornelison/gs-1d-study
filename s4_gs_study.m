@@ -282,8 +282,6 @@ for i = 1:2
     m2 = tand(smargin); % GS lip diffraction safety margin
     
     if i == 2
-        
-        
         % Make inclusion ray
         fb_point = -fb_l+pos_top+fb_h*pnt;
         
@@ -297,9 +295,9 @@ for i = 1:2
         else
             b2 = fb_point(2);
             P = get_intersection(line1,[m2 b2]);
-            P_alt = get_intersection(line2, [m2,b2]);
-            Ps = [P;P_alt];
-            [Pmax, Imax] = max(Ps(:,1));
+            %P_alt = get_intersection(line2, [m2,b2]);
+            %Ps = [P;P_alt];
+            %[Pmax, Imax] = max(Ps(:,1));
         end
         %P = Ps(Imax,:);
     end
@@ -355,8 +353,8 @@ for i = 1:2
     else
         
         if i==1
-            [excl, excl2, line1, excl_ang] = make_excl_rays(pos_top,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
-            [excl_alt, excl2_alt, line2, excl_ang_alt] = make_excl_rays(pos_bottom,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+            [excl, excl2, line1, excl_ang] = make_excl_rays(pos_bottom,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+            [excl_alt, excl2_alt, line2, excl_ang_alt] = make_excl_rays(pos_top,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
         else
             [excl_pk, excl2_pk, line1_pk, excl_ang_pk] = make_excl_rays(pos_top,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
             [excl_alt_pk, excl2_alt_pk, line2_pk, excl_ang_alt_pk] = make_excl_rays(altpos_bottom,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
@@ -430,9 +428,10 @@ for i = 1:2
             %quiver(pos(1)+winv(1),pos(2)+winv(2),excl(1)*1000,excl(2)*1000,0,'Color',mag_clr,'ShowArrowHead','off')
             quiver((pos_bottom(1)-winv(1)),(pos_bottom(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
             
+            if ~singlestat
             %quiver(altpos(1)+winv(1),altpos(2)+winv(2),excl_alt(1)*1000,excl_alt(2)*1000,0,'Color',mag_clr*0.5,'ShowArrowHead','off')
             quiver((pos_top(1)-winv(1)),(pos_top(2)-winv(2)),excl2_alt(1)*1000,excl2_alt(2)*1000,0,'m--','ShowArrowHead','off')
-            
+            end
             % Draw the scoop if we want to.
             if threeshield & i==1
                 quiver((ts_l(1)+pos_bottom(1)),(ts_l(2)+pos_bottom(2)),ts_h*pnt(1),ts_h*pnt(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)

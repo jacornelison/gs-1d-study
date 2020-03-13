@@ -17,6 +17,8 @@ sp.n_rx = 3;
 parm = s4_gs_study(sp,'PLOT',true,'OUTTEXT',true,'axis_window',15,'fixwindist',0.9388,'ts_dim',false);
 print(1,[figdir 'SAT_3RX_extended_noscoop'],'-dpng')
 
+%%
+
 for scoops = 1:3
     parm = s4_gs_study(sp,'PLOT',true,'OUTTEXT',true,'axis_window',15,'fixwindist',0.9388,'ts_dim',false,'threeshield',scoops);
     printname = [figdir sprintf('SAT_3RX_extended_scoop_%i',scoops)];
