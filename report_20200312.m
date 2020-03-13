@@ -35,7 +35,7 @@ sp.n_rx = 3;
 
 for fbs = [1.75, 3.5]
     sp.fb_h = fbs
-    parm = s4_gs_study(sp,'PLOT',true,'OUTTEXT',true,'axis_window',15,'fixwindist',0.1,'singlestat',true,'ts_dim',false);
+    parm = s4_gs_study(sp,'PLOT',true,'OUTTEXT',true,'axis_window',15,'spacing',0.1,'singlestat',true,'ts_dim',false);
     printname = [figdir sprintf('SAT_3RX_compact_fb_%i_noscoop',ceil(fbs))];
     print(1,printname,'-dpng')
     for scoops = 1:3
