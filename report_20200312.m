@@ -23,6 +23,11 @@ for scoops = 1:3
     print(1,printname,'-dpng')
 end
 
+%% Case 1.2: Extended config, minimum scoop size
+parm = s4_gs_study(sp,'PLOT',true,'OUTTEXT',true,'axis_window',15,'fixwindist',0.9388,'minscoop',true);
+printname = [figdir 'SAT_3RX_extended_scoop_fixed'];
+print(1,printname,'-dpng')
+
 %% Case 2: Compact Configuration
 sp.fov = 29.0;
 sp.win_d = 0.72;
