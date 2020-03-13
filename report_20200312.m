@@ -12,7 +12,7 @@ sp.az_off = [0., 0.];
 sp.min_el = 50.0;
 sp.n_rx = 3;
 %sp.gs_dim = [0,0];
-sp = rmfield(sp,'gs_dim');
+%sp = rmfield(sp,'gs_dim');
 
 parm = s4_gs_study(sp,'PLOT',true,'OUTTEXT',true,'axis_window',15,'fixwindist',0.9388,'ts_dim',false);
 print(1,[figdir 'SAT_3RX_extended_noscoop'],'-dpng')
