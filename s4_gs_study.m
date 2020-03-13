@@ -1,7 +1,11 @@
 function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 % function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 % This function calculates the groundhield dimensions a small aperture
-% telescope (SAT) for a wide range of input parameters.
+% telescope (SAT) for a wide range of input parameters based on the 
+% Double Diffraction Criteria listed below:
+%   C1: No portion of the absorptive forebaffle may protrude above the height of the reflective ground shield.
+%   C2: No ray originating from any receiver window may couple directly with the reflective ground shield.
+%   C3: No ray within the field of view (FOV) cone may couple with the forebaffle or groundshield.
 %
 % [Input]
 %   shield_params:  Struct containing experimental parameters. All float types.
@@ -31,7 +35,7 @@ function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 %                   with the input length in meters. Exclusion ray will be 
 %                   defined by the length of the forebaffle + length of 
 %                   the scoop. Default 0.
-%       ts_radius   {bool} Determines whether to define the scoop by
+%       ts_dim      {bool} Determines whether to define the scoop by
 %                   'radius' mor 'height'. Default true for radius. select
 %                   false for height.
 %       spacing     {Float/Int} Additional window-to-window spacing (m) for
@@ -61,6 +65,7 @@ function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 %
 %
 % function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
+
 
 % Initialize variables.
 % 3 GS panels. Determine panel locations.
@@ -130,14 +135,15 @@ if singlestat
 end
 
 if PLOT
-    clr = {[1,1,1]*0.6,[0,0,0]};
+    %clr = {[1,1,1]*0.6,[0,0,0]};
+    clr = {[0,0,0],[1,1,1]*0.6};
     if anim
         fig = figure('Visible','off');
     else
         fig = figure(1);
     end
     clf(fig)
-    set(fig,'Position',[450,150,625,590])
+    %set(fig,'Position',[450,150,625,590])
     hold off
 end
 
@@ -262,10 +268,16 @@ for i = 1:2
         % Find intersection of inc. and excl. rays.
         m2 = tand(smargin); % GS lip diffraction safety margin
         b2 = fb_point(2);
-        px = (b2-b1)/(m1-m2);
-        P = [px m2*px+b2]; % <--- Min groundshield dimensions
+        %px = (b2-b1)/(m1-m2);
+        %P = [px m2*px+b2]; % <--- Min groundshield dimensions
         
-    else
+        P = get_intersection(line1,[m2 b2]);
+        P_alt = get_intersection(line2, [m2,b2]);
+        Ps = [P;P_alt];
+        [Pmax, Imax] = max(Ps(:,1));
+        %P = Ps(Imax,:);
+    end
+    %else
         % Make exclusion ray
         % If we're including a tertiary shield (or scoop), 
         % the new exclusion ray is defined by the ray that is traced
@@ -282,28 +294,45 @@ for i = 1:2
             end
             
             ts_l = pnt2*ts_r;
-            excl = -(ts_l)+pos+(ts_h+threeshield)*pnt-(pnt2*win_d/2+pos);
-            excl2 = (ts_l)+pos+(ts_h)*pnt-(-pnt2*win_d/2+pos);
+            %excl = -(ts_l)+pos+(ts_h)*pnt-(pnt2*win_d/2+pos);
+            %excl2 = (ts_l)+pos+(ts_h)*pnt-(-pnt2*win_d/2+pos);
             % Find slope / intercept of ray
-            m1 = excl2(2)/excl2(1);
-            b1 = (-pnt2(2)*win_d/2+pos(2))-m1*(-pnt2(1)*win_d/2+pos(1));
+            %m1 = excl2(2)/excl2(1);
+            %b1 = (-pnt2(2)*win_d/2+pos(2))-m1*(-pnt2(1)*win_d/2+pos(1));
             
             % Excl. ray angle
-            excl_ang = atand(fb_h/(fb_r+win_d/2));
+            %excl_ang = atand(fb_h/(fb_r+win_d/2));
+            
+            if i==1
+                [excl, excl2, line1, excl_ang] = make_excl_rays(pos,pnt,pnt2,ts_l,ts_r,ts_h,win_d);
+                [excl_alt, excl2_alt, line2, excl_ang_alt] = make_excl_rays(altpos,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+            else 
+                [excl_pk, excl2_pk, line1_pk, excl_ang_pk] = make_excl_rays(pos,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+                [excl_alt_pk, excl2_alt_pk, line2_pk, excl_ang_alt_pk] = make_excl_rays(altpos,pnt,pnt2,fb_l,fb_r,fb_h,win_d);    
+            end
         else
             
-            excl = -(fb_l)+pos+fb_h*pnt-(pnt2*win_d/2+pos);
-            excl2 = (fb_l)+pos+fb_h*pnt-(-pnt2*win_d/2+pos);
+            %excl = -(fb_l)+pos+fb_h*pnt-(pnt2*win_d/2+pos);
+            %excl2 = (fb_l)+pos+fb_h*pnt-(-pnt2*win_d/2+pos);
             % Find slope / intercept of ray
-            m1 = excl2(2)/excl2(1);
-            b1 = (-pnt2(2)*win_d/2+pos(2))-m1*(-pnt2(1)*win_d/2+pos(1));
+            %m1 = excl2(2)/excl2(1);
+            %b1 = (-pnt2(2)*win_d/2+pos(2))-m1*(-pnt2(1)*win_d/2+pos(1));
             
             % Excl. ray angle
-            excl_ang = atand(fb_h/(fb_r+win_d/2));
+            %excl_ang = atand(fb_h/(fb_r+win_d/2));
+            if i==1
+                [excl, excl2, line1, excl_ang] = make_excl_rays(pos,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+                [excl_alt, excl2_alt, line2, excl_ang_alt] = make_excl_rays(altpos,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+            else 
+                [excl_pk, excl2_pk, line1_pk, excl_ang_pk] = make_excl_rays(pos,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+                [excl_alt_pk, excl2_alt_pk, line2_pk, excl_ang_alt_pk] = make_excl_rays(altpos,pnt,pnt2,fb_l,fb_r,fb_h,win_d);    
+            end
+            m1 = line1(1);
+            b1 = line1(2);
         end
         
         
-    end
+    %end
     
     % Grab pertinent GS parameters for return variable
     if i == 1
@@ -322,12 +351,12 @@ for i = 1:2
     if PLOT
         % These plots are purely for getting the legend right.
         % Please ignore.
-        plot([-10 11],[-1000 -1000],'g')
+        plot([0 0],[0 0],'g')
         hold on
-        plot([-10 11],[-1000 -1000],'b')
-        plot([-10 11],[-1000 -1000],'m')
-        plot([-10 11],[-1000 -1000],'k')
-        plot([-10 11],[-1000 -1000],'r')
+        plot([0 0],[0 0],'b')
+        plot([0 0],[0 0],'m')
+        plot([0 0],[0 0],'k')
+        plot([0 0],[0 0],'r')
         
         % Az, El, Dk axis vecs
         quiver(org(1),org(2),az_ax(1),az_ax(2),0,'k') % To Azimuth
@@ -361,18 +390,29 @@ for i = 1:2
         
         if i == 1
             % Exclusion Ray Vecs
-            quiver(pos(1)+winv(1),pos(2)+winv(2),excl(1)*1000,excl(2)*1000,0,'m','ShowArrowHead','off')
+            %mag_clr = [1 0 1];
+            %quiver(pos(1)+winv(1),pos(2)+winv(2),excl(1)*1000,excl(2)*1000,0,'Color',mag_clr,'ShowArrowHead','off')
             quiver((pos(1)-winv(1)),(pos(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
             
+            %quiver(altpos(1)+winv(1),altpos(2)+winv(2),excl_alt(1)*1000,excl_alt(2)*1000,0,'Color',mag_clr*0.5,'ShowArrowHead','off')
+            quiver((altpos(1)-winv(1)),(altpos(2)-winv(2)),excl2_alt(1)*1000,excl2_alt(2)*1000,0,'m--','ShowArrowHead','off')
+            
             % Draw the scoop if we want to.
-            if threeshield
+            if threeshield & i==1
                 quiver((ts_l(1)+pos(1)),(ts_l(2)+pos(2)),ts_h*pnt(1),ts_h*pnt(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
                 quiver((pos(1)),(pos(2)),ts_l(1),ts_l(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
             end
-            
+        %end    
         else
+
+            %quiver(pos(1)+winv(1),pos(2)+winv(2),excl_pk(1)*1000,excl_pk(2)*1000,0,'m','ShowArrowHead','off')
+            quiver((pos(1)-winv(1)),(pos(2)-winv(2)),excl2_pk(1)*1000,excl2_pk(2)*1000,0,'r','ShowArrowHead','off')
+            
+            %quiver(altpos(1)+winv(1),altpos(2)+winv(2),excl_alt_pk(1)*1000,excl_alt_pk(2)*1000,0,'m','ShowArrowHead','off')
+            quiver((altpos(1)-winv(1)),(altpos(2)-winv(2)),excl2_alt_pk(1)*1000,excl2_alt_pk(2)*1000,0,'r--','ShowArrowHead','off')
+            
             % Constraints Valid area
-            fill([P(1) 100 100],[P(2) m2*100+b2 m1*100+b1],[0 0.8 0]+0.2,'EdgeColor','m')
+            %fill([P(1) 100 100],[P(2) m2*100+b2 m1*100+b1],[0 0.8 0]+0.2,'EdgeColor','m')
             
             % Inclusion Ray Vecs
             plot([-1000,1000],fb_point(2)+[-1000,1000]*tand(smargin),'b')
@@ -386,7 +426,7 @@ for i = 1:2
         
         % Draw extra window / forebaffles
         if n_rx > 1
-            clrx = 0.3;
+            clrx = 0.1;
             quiver(altpos(1),altpos(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
             quiver(altpos(1),altpos(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
             quiver(altpos(1),altpos(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
@@ -503,3 +543,24 @@ end
 function [pntp] = rotate_2d(pnt,th)
 pnt2 = [pnt(2) -pnt(1)];
 pntp = pnt*cosd(th)+pnt2*sind(th);
+
+function P = get_intersection(line1,line2)
+% Gives the intersection point of two lines
+% [input]
+%   line1 - [slope, intercept]
+%   line2 - [slope, intercept]
+
+px = (line2(2)-line1(2))/(line1(1)-line2(1));
+P = [px line2(1)*px+line2(2)];
+
+function [excl, excl2, line1, excl_ang] = make_excl_rays(pos,pnt,pnt2,fb_l,fb_r,fb_h,win_d)
+excl = -(fb_l)+pos+fb_h*pnt-(pnt2*win_d/2+pos);
+excl2 = (fb_l)+pos+fb_h*pnt-(-pnt2*win_d/2+pos);
+% Find slope / intercept of ray
+m1 = excl2(2)/excl2(1);
+b1 = (-pnt2(2)*win_d/2+pos(2))-m1*(-pnt2(1)*win_d/2+pos(1));
+
+line1 = [m1, b1];
+
+% Excl. ray angle
+excl_ang = atand(fb_h/(fb_r+win_d/2));
