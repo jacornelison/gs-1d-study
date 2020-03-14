@@ -43,8 +43,8 @@ function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 %       fixwindist  If value given, don't close-pack rxs and instead fix
 %                   the enclosed radius
 %       minscoop    Automatically determines the scoop length based on by
-%                   finding the intersection between the bottom FOV ray of 
-%                   the RX at the bottom of the drum and the Exclusion ray 
+%                   finding the intersection between the bottom FOV ray of
+%                   the RX at the bottom of the drum and the Exclusion ray
 %                   of the RX rotated to the top of the drum.
 %
 % [Output]
@@ -295,11 +295,26 @@ for i = 1:2
         else
             b2 = fb_point(2);
             P = get_intersection(line1,[m2 b2]);
-            %P_alt = get_intersection(line2, [m2,b2]);
-            %Ps = [P;P_alt];
-            %[Pmax, Imax] = max(Ps(:,1));
+            P_alt = get_intersection(line2, [m2,b2]);
+            Pline = [line1];
+            Ps = [P];
+            
+            if ~singlestat
+                Pline = [Pline; line2];
+                Ps = [Ps; P_alt];
+            end
+            
+            if threeshield & ~singlestat
+                P_graze = get_intersection(grazeline, [m2,b2]);
+                Ps = [Ps; P_graze];
+                Pline = [Pline; grazeline];
+            end
+            
+            [Pmax, Imax] = max(Ps(:,1));
+            P = Ps(Imax,:);
+            Pline = Pline(Imax,:);
         end
-        %P = Ps(Imax,:);
+        
     end
     %else
     % Make exclusion ray
@@ -324,7 +339,7 @@ for i = 1:2
         threeshield = norm(Q)*sin(th);
         ts_dim = true;
         %gs_dim = [0 0]; %P_int+[1,0];
-
+        
     end
     
     
@@ -340,21 +355,33 @@ for i = 1:2
         end
         
         ts_l = pnt2*ts_r;
-
+        
         
         if i==1
             [excl, excl2, line1, excl_ang] = make_excl_rays(pos_bottom,pnt,pnt2,ts_l,ts_r,ts_h,win_d);
             [excl_alt, excl2_alt, line2, excl_ang_alt] = make_excl_rays(pos_top,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+            
+            exposure_angle = excl_ang-excl_ang_alt;
+            % Make the exclusion ray that just grazes the scoop
+            ts_pos = ts_l+pos_bottom+(ts_h*pnt);
+            b_graze = ts_pos(2)-line2(1)*ts_pos(1);
+            grazeline = [line2(1), b_graze];
+            th_line = atand(line2(1));
+            grazeline_start = [ts_pos(1)-ts_h/cosd(90-excl_ang_alt)*cosd(th_line), 0];
+            grazeline_start(2) = grazeline_start(1)*line2(1)+b_graze;
+            
         else
             [excl_pk, excl2_pk, line1_pk, excl_ang_pk] = make_excl_rays(pos_top,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
             [excl_alt_pk, excl2_alt_pk, line2_pk, excl_ang_alt_pk] = make_excl_rays(altpos_bottom,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
         end
-
+        
     else
         
         if i==1
             [excl, excl2, line1, excl_ang] = make_excl_rays(pos_bottom,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
             [excl_alt, excl2_alt, line2, excl_ang_alt] = make_excl_rays(pos_top,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
+            
+            
         else
             [excl_pk, excl2_pk, line1_pk, excl_ang_pk] = make_excl_rays(pos_top,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
             [excl_alt_pk, excl2_alt_pk, line2_pk, excl_ang_alt_pk] = make_excl_rays(altpos_bottom,pnt,pnt2,fb_l,fb_r,fb_h,win_d);
@@ -371,12 +398,20 @@ for i = 1:2
         gs_params.excl_ang = excl_ang;
         if threeshield
             gs_params.ts_dim = ts_l+pos_bottom+(ts_h*pnt);
+            gs_params.exp_angle = exposure_angle;
         end
     else
         gs_params.el_peak = 90-el_peak;
         gs_params.fb_h = fb_h;
         gs_params.fb_r = fb_r;
-        gs_params.gs_dim = P;
+        if P(1)>0
+           gs_params.gs_dim = P;
+        else
+           P = [1000,1000];
+           gs_params.gs_dim = [NaN,NaN];
+        end
+        
+        
     end
     
     % Plotting
@@ -415,13 +450,13 @@ for i = 1:2
             quiver((-winv(1)+pos_bottom(1)),(-winv(2)+pos_bottom(2)),fov1(1),fov1(2),0,'g','ShowArrowHead','off')
         end
         
-        if 1%i==1
+        %if 1%i==1
         % Forebaffle Vecs
         quiver(pos_bottom(1),pos_bottom(2),fb_l(1),fb_l(2),0,'Color',clr{i},'ShowArrowHead','off')
         quiver(pos_bottom(1),pos_bottom(2),-fb_l(1),-fb_l(2),0,'Color',clr{i},'ShowArrowHead','off')
         quiver(fb_l(1)+pos_bottom(1),fb_l(2)+pos_bottom(2),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i},'ShowArrowHead','off')
         quiver((-fb_l(1)+pos_bottom(1)),(-fb_l(2)+pos_bottom(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i},'ShowArrowHead','off')
-        end
+        %end
         if i == 1
             % Exclusion Ray Vecs
             
@@ -429,13 +464,18 @@ for i = 1:2
             quiver((pos_bottom(1)-winv(1)),(pos_bottom(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
             
             if ~singlestat
-            %quiver(altpos(1)+winv(1),altpos(2)+winv(2),excl_alt(1)*1000,excl_alt(2)*1000,0,'Color',mag_clr*0.5,'ShowArrowHead','off')
-            quiver((pos_top(1)-winv(1)),(pos_top(2)-winv(2)),excl2_alt(1)*1000,excl2_alt(2)*1000,0,'m--','ShowArrowHead','off')
+                %quiver(altpos(1)+winv(1),altpos(2)+winv(2),excl_alt(1)*1000,excl_alt(2)*1000,0,'Color',mag_clr*0.5,'ShowArrowHead','off')
+                quiver((pos_top(1)-winv(1)),(pos_top(2)-winv(2)),excl2_alt(1)*1000,excl2_alt(2)*1000,0,'m--','ShowArrowHead','off')
             end
             % Draw the scoop if we want to.
-            if threeshield & i==1
+            if threeshield
                 quiver((ts_l(1)+pos_bottom(1)),(ts_l(2)+pos_bottom(2)),ts_h*pnt(1),ts_h*pnt(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
                 quiver((pos_bottom(1)),(pos_bottom(2)),ts_l(1),ts_l(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
+            end
+            
+            % Draw the graze line
+            if threeshield & ~singlestat
+                plot([grazeline_start(1),1000],grazeline_start(2)+[0,1000*line2(1)],'m-.')
             end
             %end
         else
@@ -452,33 +492,28 @@ for i = 1:2
             if minscoop
                 fill([P(1) 100 100],[P(2) m2*100+P(2) excl_line(1)*100+excl_line(2)],[0 0.8 0]+0.2,'EdgeColor','m','LineStyle','--')
                 plot([-1000,P_int(1)],[1000*tand(smargin)+b2,P_int(2)],'b--')
+            else
+                fill([P(1) 100 100],[P(2) m2*100+P(2) Pline(1)*100+Pline(2)],[0 0.8 0]+0.2,'EdgeColor','m','LineStyle','--')
             end
-                plot([-1000,1000],b2+[-1000,1000]*tand(smargin),'b')
-                plot(P(1),P(2),'rx')
-                plot(fb_point(1),fb_point(2),'bx')
-           
-            
-            
-            
-
+            plot([-1000,1000],b2+[-1000,1000]*tand(smargin),'b')
+            plot(P(1),P(2),'rx')
+            plot(fb_point(1),fb_point(2),'bx')
             
         end
         
         % Draw extra window / forebaffles
         if n_rx > 1 %& i==1
             clrx = 0.1;
-%             quiver(altpos_bottom(1),altpos_bottom(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
-%             quiver(altpos_bottom(1),altpos_bottom(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
-%             quiver(altpos_bottom(1),altpos_bottom(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-%             quiver(altpos_bottom(1),altpos_bottom(2),-fb_l(1),-fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-%             
+            %             quiver(altpos_bottom(1),altpos_bottom(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
+            %             quiver(altpos_bottom(1),altpos_bottom(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
+            %             quiver(altpos_bottom(1),altpos_bottom(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+            %             quiver(altpos_bottom(1),altpos_bottom(2),-fb_l(1),-fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+            %
             quiver(pos_top(1),pos_top(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
             quiver(pos_top(1),pos_top(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
             quiver(pos_top(1),pos_top(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
             quiver(pos_top(1),pos_top(2),-fb_l(1),-fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-            
-            
-            
+
             
             quiver(fb_l(1)+pos_top(1),fb_l(2)+pos_top(2),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
             quiver((-fb_l(1)+pos_top(1)),(-fb_l(2)+pos_top(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
@@ -499,7 +534,7 @@ for i = 1:2
             quiver(-P(1)*g1,0,-P(1)*g2,P(1)*g2*tand(gd),0,'Color','k','ShowArrowHead','off','LineWidth',1)
             quiver(-P(1)*(g1+g2),P(1)*g2*tand(gd),-P(1)*g3,(P(2)-P(1)*g2*tand(gd)),0,'Color','k','ShowArrowHead','off','LineWidth',1)
             
-            
+            plot([P(1),P(1)],[-1000,P(2)],'r')
             
         end
         
@@ -541,13 +576,14 @@ if PLOT
             sprintf('El @ FB peak (deg): %2.1f',90-el_peak),...
             sprintf('Forebaffle Radius (m): %2.1f',fb_r),...
             sprintf('Excl. Ray Angle (deg): %2.1f',excl_ang),...
-            sprintf('Min GS dim [x,y] (m): [ %2.1f, %2.1f ]',P(1),P(2))...
+            sprintf('Min GS dim [x,y] (m): [ %2.1f, %2.1f ]',gs_params.gs_dim(1),gs_params.gs_dim(2))...
             };
         
         txt_str = {txt_str{:} t{:}};
         
         if threeshield
             txt_str{end+1} = sprintf('Tertiary Shield Tip [x,y] (m): [ %2.1f, %2.1f ]',gs_params.ts_dim(1),gs_params.ts_dim(2));
+            txt_str{end+1} = sprintf('TS Exposure Angle (deg): %2.1f',exposure_angle);
         end
         
     end
