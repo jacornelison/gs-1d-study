@@ -1,1 +1,1 @@
-# gs-1d-study
+# gs-2d-study
