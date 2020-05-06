@@ -26,26 +26,28 @@ function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 %                   experiments with known input parameters.
 %                   Example: s4_gs_study('BICEP2')
 %
-%   varargin:       {Input type} Miscellaneous arguments the changes behavior
-%       PLOT        {Bool} Turning plotting on (1) or off (0). Off by default.
-%       anim        {Bool} Outputs an invisible figure to varargout for gif-making.
-%       singlestat  {Bool} If true, will pack rx's together under a single forebaffle.
-%                   False by default.
-%       threeshield {Float/Int} Inserts a tertiary shield (called a scoop)
+%   varargin:       {Input type | default} Miscellaneous arguments the changes behavior
+%       PLOT        {Bool | 0} Turning plotting on (1) or off (0).
+%       anim        {Bool | 0} Outputs an invisible figure to varargout for gif-making.
+%       singlestat  {Bool | 0} If true, will pack rx's together under a single forebaffle.
+%       threeshield {Float/Int | 0} Inserts a tertiary shield (called a scoop)
 %                   with the input length in meters. Exclusion ray will be
 %                   defined by the length of the forebaffle + length of
-%                   the scoop. Default 0.
-%       ts_dim      {bool} Determines whether to define the scoop by
+%                   the scoop.
+%       ts_dim      {bool | 1} Determines whether to define the scoop by
 %                   'radius' mor 'height'. Default true for radius. select
 %                   false for height.
 %       spacing     {Float/Int} Additional window-to-window spacing (m) for
 %                   singlestat option (only for 3-rx for now)
-%       fixwindist  If value given, don't close-pack rxs and instead fix
-%                   the enclosed radius
-%       minscoop    Automatically determines the scoop length based on by
+%       fixwindist  {Float | 0} If value given, don't close-pack rxs and 
+%                   instead fix the enclosed radius
+%       minscoop    {Float} Automatically determines the scoop length based on by
 %                   finding the intersection between the bottom FOV ray of
 %                   the RX at the bottom of the drum and the Exclusion ray
 %                   of the RX rotated to the top of the drum.
+%       showalt     {Bool | 1} When plotting, also plots RX's at the peak
+%                   forebaffle height.
+%       
 %
 % [Output]
 %   gs_params       {Units} Struct containing derived groundshield data.
@@ -84,6 +86,8 @@ if isempty(shield_params)
 elseif ischar(shield_params)
     expt = shield_params;
     shield_params = get_shield_params(shield_params);
+elseif isfield(shield_params,'expt')
+    expt = shield_params.expt;
 end
 % Otherwise, struct should already contain requisite parameters
 
@@ -94,10 +98,10 @@ end
 
 opts = {'PLOT','anim','singlestat','threeshield','smargin',...
     'axis_window','INTEXT','OUTTEXT','LEGEND','TITLE',...
-    'spacing','fixwindist','ts_dim', 'minscoop'};
+    'spacing','fixwindist','ts_dim', 'minscoop','showalt'};
 defs = {false, false, false, false, 2,...
     10, false, false, true,true,...
-    0, false,true, false};
+    0, false,true, false, true};
 
 for i = 1:length(varargin)
     for j = 1:length(opts)
@@ -203,16 +207,22 @@ for i = 1:2
         altpos_top = altpos_top + [1 0]*encl_r/2;
         
     elseif n_rx == 4
-        encl_r = fb_r*(1+sqrt(2))-fb_r; % 4 Circle Packing radius
-        
+        if fixwindist
+            encl_r = fixwindist;
+        else
+            encl_r = fb_r*(1+sqrt(2))-fb_r; % 4 Circle Packing radius
+        end
         pos_bottom = pos_bottom + [1 0]*encl_r;
         altpos_bottom = altpos_bottom - [1 0]*encl_r;
         pos_top = pos_top - [1 0]*encl_r;
         altpos_top = altpos_top + [1 0]*encl_r;
         
     elseif n_rx == 5
-        encl_r = fb_r*(1+sqrt(2*(1+1/sqrt(5))))-fb_r; % 5 Circle Packing radius
-        
+        if fixwindist
+            encl_r = fixwindist;
+        else
+            encl_r = fb_r*(1+sqrt(2*(1+1/sqrt(5))))-fb_r; % 5 Circle Packing radius
+        end
         pos_bottom = pos_bottom + [1 0]*encl_r;
         altpos_bottom = altpos_bottom - [1 0]*encl_r;
         pos_top = pos_top - [1 0]*encl_r;
@@ -416,6 +426,7 @@ for i = 1:2
     
     % Plotting
     if PLOT
+        if showalt | i==1
         % These plots are purely for getting the legend right.
         % Please ignore.
         plot([0 0],[0 0],'g')
@@ -433,10 +444,6 @@ for i = 1:2
         quiver(el_ax(1),el_ax(2),x,y,0,'k') % El to Dk y
         xy2 = pnt2 * dk_off(1);
         quiver(el_ax(1)+x,el_ax(2)+y,xy2(1),xy2(2),0,'color',[0.7 0 0]) % El to Dk y
-        %quiver(dk_ax(1)-el_off(1)+el_ax(1),dk_ax(2)-el_off(2)+el_ax(2),dk_ax(1),dk_ax(2),0,'k') % El to Dk
-        % pnting vecs
-        %quiver(pos(1),pos(2),pnt(1)*100,pnt(2)*100,0)
-        %quiver(pos(1),pos(2),pnt2(1)*100,pnt2(2)*100,0)
         
         
         % window Vecs
@@ -444,13 +451,6 @@ for i = 1:2
         quiver(pos_bottom(1),pos_bottom(2),-winv(1),-winv(2),0,'Color',clr{i},'ShowArrowHead','off','LineWidth',4)
         
         
-        % fov Vec
-        if i == 1 %2
-            quiver(winv(1)+pos_bottom(1),winv(2)+pos_bottom(2),fov2(1),fov2(2),0,'g','ShowArrowHead','off')
-            quiver((-winv(1)+pos_bottom(1)),(-winv(2)+pos_bottom(2)),fov1(1),fov1(2),0,'g','ShowArrowHead','off')
-        end
-        
-        %if 1%i==1
         % Forebaffle Vecs
         quiver(pos_bottom(1),pos_bottom(2),fb_l(1),fb_l(2),0,'Color',clr{i},'ShowArrowHead','off')
         quiver(pos_bottom(1),pos_bottom(2),-fb_l(1),-fb_l(2),0,'Color',clr{i},'ShowArrowHead','off')
@@ -458,9 +458,12 @@ for i = 1:2
         quiver((-fb_l(1)+pos_bottom(1)),(-fb_l(2)+pos_bottom(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i},'ShowArrowHead','off')
         %end
         if i == 1
+            % FOV Vecs
+            quiver(winv(1)+pos_bottom(1),winv(2)+pos_bottom(2),fov2(1),fov2(2),0,'g','ShowArrowHead','off')
+            quiver((-winv(1)+pos_bottom(1)),(-winv(2)+pos_bottom(2)),fov1(1),fov1(2),0,'g','ShowArrowHead','off')
+            
             % Exclusion Ray Vecs
             
-            %quiver(pos(1)+winv(1),pos(2)+winv(2),excl(1)*1000,excl(2)*1000,0,'Color',mag_clr,'ShowArrowHead','off')
             quiver((pos_bottom(1)-winv(1)),(pos_bottom(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
             
             if ~singlestat
@@ -477,15 +480,24 @@ for i = 1:2
             if threeshield & ~singlestat
                 plot([grazeline_start(1),1000],grazeline_start(2)+[0,1000*line2(1)],'m-.')
             end
-            %end
-        else
+        end
+        
+        % Draw extra window / forebaffles
+        if n_rx > 1
+            clrx = 0.1;
+
+            quiver(pos_top(1),pos_top(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
+            quiver(pos_top(1),pos_top(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
+            quiver(pos_top(1),pos_top(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+            quiver(pos_top(1),pos_top(2),-fb_l(1),-fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+
             
-            %quiver(pos(1)+winv(1),pos(2)+winv(2),excl_pk(1)*1000,excl_pk(2)*1000,0,'m','ShowArrowHead','off')
-            %quiver((pos_bottom(1)-winv(1)),(pos_bottom(2)-winv(2)),excl2_pk(1)*1000,excl2_pk(2)*1000,0,'r','ShowArrowHead','off')
-            
-            %quiver(altpos(1)+winv(1),altpos(2)+winv(2),excl_alt_pk(1)*1000,excl_alt_pk(2)*1000,0,'m','ShowArrowHead','off')
-            %quiver((altpos_bottom(1)-winv(1)),(altpos_bottom(2)-winv(2)),excl2_alt_pk(1)*1000,excl2_alt_pk(2)*1000,0,'r--','ShowArrowHead','off')
-            
+            quiver(fb_l(1)+pos_top(1),fb_l(2)+pos_top(2),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+            quiver((-fb_l(1)+pos_top(1)),(-fb_l(2)+pos_top(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+        end
+        end
+        % Draw Ground Shield
+        if i == 2
             % Constraints Valid area
             % Inclusion Ray Vecs
             % Min GS tip location
@@ -499,28 +511,6 @@ for i = 1:2
             plot(P(1),P(2),'rx')
             plot(fb_point(1),fb_point(2),'bx')
             
-        end
-        
-        % Draw extra window / forebaffles
-        if n_rx > 1 %& i==1
-            clrx = 0.1;
-            %             quiver(altpos_bottom(1),altpos_bottom(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
-            %             quiver(altpos_bottom(1),altpos_bottom(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
-            %             quiver(altpos_bottom(1),altpos_bottom(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-            %             quiver(altpos_bottom(1),altpos_bottom(2),-fb_l(1),-fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-            %
-            quiver(pos_top(1),pos_top(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
-            quiver(pos_top(1),pos_top(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
-            quiver(pos_top(1),pos_top(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-            quiver(pos_top(1),pos_top(2),-fb_l(1),-fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-
-            
-            quiver(fb_l(1)+pos_top(1),fb_l(2)+pos_top(2),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-            quiver((-fb_l(1)+pos_top(1)),(-fb_l(2)+pos_top(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-        end
-        
-        % Draw Ground Shield
-        if i == 2% & 1
             % Force MAPO groundshield dimensions:
             if exist('gs_dim','var')
                 P = gs_dim;

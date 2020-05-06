@@ -41,6 +41,19 @@ switch expt_name
         gs_dim = [7.62 5.1]; % DASI groundshield
         
     
+    case 'keckonBA'
+        % Taken from SOLIDWorks "AsBuild" models in the repo.
+        % Optical params from Lorenzo's instrument parameter spreadsheet
+        fb_h = 0.7366+0.14;
+        fov = 9.6*2;
+        win_d = 0.264;
+        dk_off = [0., 0.9271];
+        el_off = [0., 2.3];
+        az_off = [0., 0.];
+        min_el = 54;
+        n_rx = 4;
+        gs_dim = [7.62 5.1]; % DASI groundshield
+        
     case 'BICEP3'
         % Forebaffle dimensions from Mike Crumrin's designs on the TWiki:
         % http://polar-array.stanford.edu/twiki/bin/view/BICEP3/Logbook140825SplitForebaffle
