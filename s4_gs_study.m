@@ -39,7 +39,7 @@ function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 %                   false for height.
 %       spacing     {Float/Int} Additional window-to-window spacing (m) for
 %                   singlestat option (only for 3-rx for now)
-%       fixwindist  {Float | 0} If value given, don't close-pack rxs and 
+%       fixwindist  {Float | 0} If value given, don't close-pack rxs and
 %                   instead fix the enclosed radius
 %       minscoop    {Float} Automatically determines the scoop length based on by
 %                   finding the intersection between the bottom FOV ray of
@@ -47,7 +47,12 @@ function [gs_params, varargout] = s4_gs_study(shield_params, varargin)
 %                   of the RX rotated to the top of the drum.
 %       showalt     {Bool | 1} When plotting, also plots RX's at the peak
 %                   forebaffle height.
-%       
+%       xxxlines    {Bool | 1} Toggles lines in the plotting. ex: fovlines
+%           fov     Field of view. default: 1
+%           inc     Inclusion Ray. default: 1
+%           exc     Exclusion Ray. default: 1
+%           fv2     Fov lines from upper window. Default: 0
+%           tip     GS Tip location. default: 1
 %
 % [Output]
 %   gs_params       {Units} Struct containing derived groundshield data.
@@ -98,10 +103,12 @@ end
 
 opts = {'PLOT','anim','singlestat','threeshield','smargin',...
     'axis_window','INTEXT','OUTTEXT','LEGEND','TITLE',...
-    'spacing','fixwindist','ts_dim', 'minscoop','showalt'};
+    'spacing','fixwindist','ts_dim', 'minscoop','showalt',...
+    'fovlines','inclines','exclines','fv2lines','tiplines'};
 defs = {false, false, false, false, 2,...
     10, false, false, true,true,...
-    0, false,true, false, true};
+    0, false,true, false, true...
+    1,1,1,0,1};
 
 for i = 1:length(varargin)
     for j = 1:length(opts)
@@ -415,10 +422,10 @@ for i = 1:2
         gs_params.fb_h = fb_h;
         gs_params.fb_r = fb_r;
         if P(1)>0
-           gs_params.gs_dim = P;
+            gs_params.gs_dim = P;
         else
-           P = [1000,1000];
-           gs_params.gs_dim = [NaN,NaN];
+            P = [1000,1000];
+            gs_params.gs_dim = [NaN,NaN];
         end
         
         
@@ -427,74 +434,81 @@ for i = 1:2
     % Plotting
     if PLOT
         if showalt | i==1
-        % These plots are purely for getting the legend right.
-        % Please ignore.
-        plot([0 0],[0 0],'g')
-        hold on
-        plot([0 0],[0 0],'b')
-        plot([0 0],[0 0],'m')
-        plot([0 0],[0 0],'k')
-        plot([0 0],[0 0],'r')
-        
-        % Az, El, Dk axis vecs
-        quiver(org(1),org(2),az_ax(1),az_ax(2),0,'k') % To Azimuth
-        quiver(az_ax(1),az_ax(2),el_ax(1),el_ax(2),0,'k') % Az to El
-        x = pnt(1)*dk_off(2);
-        y = pnt(2)*dk_off(2);
-        quiver(el_ax(1),el_ax(2),x,y,0,'k') % El to Dk y
-        xy2 = pnt2 * dk_off(1);
-        quiver(el_ax(1)+x,el_ax(2)+y,xy2(1),xy2(2),0,'color',[0.7 0 0]) % El to Dk y
-        
-        
-        % window Vecs
-        quiver(pos_bottom(1),pos_bottom(2),winv(1),winv(2),0,'Color',clr{i},'ShowArrowHead','off','LineWidth',4)
-        quiver(pos_bottom(1),pos_bottom(2),-winv(1),-winv(2),0,'Color',clr{i},'ShowArrowHead','off','LineWidth',4)
-        
-        
-        % Forebaffle Vecs
-        quiver(pos_bottom(1),pos_bottom(2),fb_l(1),fb_l(2),0,'Color',clr{i},'ShowArrowHead','off')
-        quiver(pos_bottom(1),pos_bottom(2),-fb_l(1),-fb_l(2),0,'Color',clr{i},'ShowArrowHead','off')
-        quiver(fb_l(1)+pos_bottom(1),fb_l(2)+pos_bottom(2),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i},'ShowArrowHead','off')
-        quiver((-fb_l(1)+pos_bottom(1)),(-fb_l(2)+pos_bottom(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i},'ShowArrowHead','off')
-        %end
-        if i == 1
-            % FOV Vecs
-            quiver(winv(1)+pos_bottom(1),winv(2)+pos_bottom(2),fov2(1),fov2(2),0,'g','ShowArrowHead','off')
-            quiver((-winv(1)+pos_bottom(1)),(-winv(2)+pos_bottom(2)),fov1(1),fov1(2),0,'g','ShowArrowHead','off')
+            % These plots are purely for getting the legend right.
+            % Please ignore.
+            plot([0 0],[0 0],'g')
+            hold on
+            plot([0 0],[0 0],'b')
+            plot([0 0],[0 0],'m')
+            plot([0 0],[0 0],'k')
+            plot([0 0],[0 0],'r')
             
-            % Exclusion Ray Vecs
+            % Az, El, Dk axis vecs
+            quiver(org(1),org(2),az_ax(1),az_ax(2),0,'k') % To Azimuth
+            quiver(az_ax(1),az_ax(2),el_ax(1),el_ax(2),0,'k') % Az to El
+            x = pnt(1)*dk_off(2);
+            y = pnt(2)*dk_off(2);
+            quiver(el_ax(1),el_ax(2),x,y,0,'k') % El to Dk y
+            xy2 = pnt2 * dk_off(1);
+            quiver(el_ax(1)+x,el_ax(2)+y,xy2(1),xy2(2),0,'color',[0.7 0 0]) % El to Dk y
             
-            quiver((pos_bottom(1)-winv(1)),(pos_bottom(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
             
-            if ~singlestat
-                %quiver(altpos(1)+winv(1),altpos(2)+winv(2),excl_alt(1)*1000,excl_alt(2)*1000,0,'Color',mag_clr*0.5,'ShowArrowHead','off')
-                quiver((pos_top(1)-winv(1)),(pos_top(2)-winv(2)),excl2_alt(1)*1000,excl2_alt(2)*1000,0,'m--','ShowArrowHead','off')
+            % window Vecs
+            quiver(pos_bottom(1),pos_bottom(2),winv(1),winv(2),0,'Color',clr{i},'ShowArrowHead','off','LineWidth',4)
+            quiver(pos_bottom(1),pos_bottom(2),-winv(1),-winv(2),0,'Color',clr{i},'ShowArrowHead','off','LineWidth',4)
+            
+            
+            % Forebaffle Vecs
+            quiver(pos_bottom(1),pos_bottom(2),fb_l(1),fb_l(2),0,'Color',clr{i},'ShowArrowHead','off')
+            quiver(pos_bottom(1),pos_bottom(2),-fb_l(1),-fb_l(2),0,'Color',clr{i},'ShowArrowHead','off')
+            quiver(fb_l(1)+pos_bottom(1),fb_l(2)+pos_bottom(2),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i},'ShowArrowHead','off')
+            quiver((-fb_l(1)+pos_bottom(1)),(-fb_l(2)+pos_bottom(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i},'ShowArrowHead','off')
+            %end
+            if i == 1
+                % FOV Vecs
+                if fovlines
+                    quiver(winv(1)+pos_bottom(1),winv(2)+pos_bottom(2),fov2(1),fov2(2),0,'g','ShowArrowHead','off')
+                    quiver((-winv(1)+pos_bottom(1)),(-winv(2)+pos_bottom(2)),fov1(1),fov1(2),0,'g','ShowArrowHead','off')
+                    
+                    if fv2lines
+                        quiver(winv(1)+pos_top(1),winv(2)+pos_top(2),fov2(1),fov2(2),0,'g--','ShowArrowHead','off')
+                        quiver((-winv(1)+pos_top(1)),(-winv(2)+pos_top(2)),fov1(1),fov1(2),0,'g--','ShowArrowHead','off')
+                    end
+                end
+                % Exclusion Ray Vecs
+                if exclines
+                    quiver((pos_bottom(1)-winv(1)),(pos_bottom(2)-winv(2)),excl2(1)*1000,excl2(2)*1000,0,'m','ShowArrowHead','off')
+                    
+                    if ~singlestat
+                        %quiver(altpos(1)+winv(1),altpos(2)+winv(2),excl_alt(1)*1000,excl_alt(2)*1000,0,'Color',mag_clr*0.5,'ShowArrowHead','off')
+                        quiver((pos_top(1)-winv(1)),(pos_top(2)-winv(2)),excl2_alt(1)*1000,excl2_alt(2)*1000,0,'m--','ShowArrowHead','off')
+                    end
+                end
+                % Draw the scoop if we want to.
+                if threeshield
+                    quiver((ts_l(1)+pos_bottom(1)),(ts_l(2)+pos_bottom(2)),ts_h*pnt(1),ts_h*pnt(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
+                    quiver((pos_bottom(1)),(pos_bottom(2)),ts_l(1),ts_l(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
+                end
+                
+                % Draw the graze line
+                if threeshield & ~singlestat
+                    plot([grazeline_start(1),1000],grazeline_start(2)+[0,1000*line2(1)],'m-.')
+                end
             end
-            % Draw the scoop if we want to.
-            if threeshield
-                quiver((ts_l(1)+pos_bottom(1)),(ts_l(2)+pos_bottom(2)),ts_h*pnt(1),ts_h*pnt(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
-                quiver((pos_bottom(1)),(pos_bottom(2)),ts_l(1),ts_l(2),0,'Color',[0 0 0.3]+0.2,'ShowArrowHead','off','LineWidth',3)
-            end
             
-            % Draw the graze line
-            if threeshield & ~singlestat
-                plot([grazeline_start(1),1000],grazeline_start(2)+[0,1000*line2(1)],'m-.')
+            % Draw extra window / forebaffles
+            if n_rx > 1
+                clrx = 0.1;
+                
+                quiver(pos_top(1),pos_top(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
+                quiver(pos_top(1),pos_top(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
+                quiver(pos_top(1),pos_top(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+                quiver(pos_top(1),pos_top(2),-fb_l(1),-fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+                
+                
+                quiver(fb_l(1)+pos_top(1),fb_l(2)+pos_top(2),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
+                quiver((-fb_l(1)+pos_top(1)),(-fb_l(2)+pos_top(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
             end
-        end
-        
-        % Draw extra window / forebaffles
-        if n_rx > 1
-            clrx = 0.1;
-
-            quiver(pos_top(1),pos_top(2),winv(1),winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
-            quiver(pos_top(1),pos_top(2),-winv(1),-winv(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off','LineWidth',4)
-            quiver(pos_top(1),pos_top(2),fb_l(1),fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-            quiver(pos_top(1),pos_top(2),-fb_l(1),-fb_l(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-
-            
-            quiver(fb_l(1)+pos_top(1),fb_l(2)+pos_top(2),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-            quiver((-fb_l(1)+pos_top(1)),(-fb_l(2)+pos_top(2)),fb_h*pnt(1),fb_h*pnt(2),0,'Color',clr{i}+clrx,'ShowArrowHead','off')
-        end
         end
         % Draw Ground Shield
         if i == 2
@@ -507,10 +521,12 @@ for i = 1:2
             else
                 fill([P(1) 100 100],[P(2) m2*100+P(2) Pline(1)*100+Pline(2)],[0 0.8 0]+0.2,'EdgeColor','m','LineStyle','--')
             end
-            plot([-1000,1000],b2+[-1000,1000]*tand(smargin),'b')
-            plot(P(1),P(2),'rx')
-            plot(fb_point(1),fb_point(2),'bx')
             
+            if inclines
+                plot([-1000,1000],b2+[-1000,1000]*tand(smargin),'b')
+                plot(P(1),P(2),'rx')
+                plot(fb_point(1),fb_point(2),'bx')
+            end
             % Force MAPO groundshield dimensions:
             if exist('gs_dim','var')
                 P = gs_dim;
@@ -524,8 +540,9 @@ for i = 1:2
             quiver(-P(1)*g1,0,-P(1)*g2,P(1)*g2*tand(gd),0,'Color','k','ShowArrowHead','off','LineWidth',1)
             quiver(-P(1)*(g1+g2),P(1)*g2*tand(gd),-P(1)*g3,(P(2)-P(1)*g2*tand(gd)),0,'Color','k','ShowArrowHead','off','LineWidth',1)
             
+            if tiplines
             plot([P(1),P(1)],[-1000,P(2)],'r')
-            
+            end
         end
         
         

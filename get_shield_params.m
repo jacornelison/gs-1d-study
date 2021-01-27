@@ -30,7 +30,7 @@ switch expt_name
         % Taken from SOLIDWorks "AsBuild" models in the repo.
         % FB dimensions from Fig. 3.7 of NWP's 20190207_BA_Forebaffle_Concepts posting in BA logbook.
         % Optical params from Lorenzo's instrument parameter spreadsheet
-        fb_h = 1.086;
+        fb_h = 1.01;
         fov = 29.6;
         win_d = 0.34*2;
         dk_off = [0., 0.9271];
